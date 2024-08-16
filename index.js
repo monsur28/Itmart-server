@@ -24,46 +24,44 @@ async function run() {
   try {
     const productCollection = client.db("ItmartDB").collection("product");
 
-    // Updated /product endpoint with pagination, search, categorization, and sorting
-    app.get("/product", async (req, res) => {
+    // Endpoint to get all products with pagination, search, categorization, and sorting
+    app.get("/products", async (req, res) => {
       const {
         page = 1,
-        limit = 10,
+        limit = 9,
         search = "",
-        BrandName, // Use exact parameter names from frontend
-        Category, // Use exact parameter names from frontend
+        BrandName,
+        Category,
         minPrice,
         maxPrice,
         sortBy,
       } = req.query;
 
-      const query = {
-        ProductName: { $regex: search, $options: "i" }, // Search by product name
-      };
+      const query = {};
 
-      // Filter by BrandName
+      if (search) {
+        query.ProductName = { $regex: search, $options: "i" };
+      }
+
       if (BrandName) {
         query.BrandName = BrandName;
       }
 
-      // Filter by Category
       if (Category) {
         query.Category = Category;
       }
 
-      // Filter by price range
       if (minPrice || maxPrice) {
         query.Price = {};
         if (minPrice) query.Price.$gte = Number(minPrice);
         if (maxPrice) query.Price.$lte = Number(maxPrice);
       }
 
-      // Sorting options
       let sort = {};
       if (sortBy === "priceAsc") sort.Price = 1;
       if (sortBy === "priceDesc") sort.Price = -1;
-      if (sortBy === "dateNewest") sort.createdAt = -1;
-      if (sortBy === "dateOldest") sort.createdAt = 1;
+      if (sortBy === "dateNewest") sort.ProductCreationDateTime = -1;
+      if (sortBy === "dateOldest") sort.ProductCreationDateTime = 1;
 
       try {
         const products = await productCollection
@@ -84,6 +82,24 @@ async function run() {
         console.error("Error fetching products:", error);
         res.status(500).send({ error: "Failed to fetch products" });
       }
+    });
+
+    // Example endpoint to get all products (without filtering)
+    app.get("/product", async (req, res) => {
+      try {
+        const result = await productCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ error: "Failed to fetch products" });
+      }
+    });
+
+    app.get("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await productCollection.findOne(query);
+      res.send(result);
     });
 
     // Connect the client to the server (optional starting in v4.7)
@@ -107,5 +123,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
